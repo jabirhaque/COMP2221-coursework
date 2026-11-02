@@ -1,0 +1,11 @@
+# A single-bit payload fault must not be returned as valid data (rejecting the read or correcting the bit are both acceptable).
+HEAP 4096
+MALLOC 0 160
+MALLOC 1 160
+WRITE 0 0 64
+WRITE 1 0 64
+CHECK_ALL
+FLIP_SLOT 0 10 0x01
+CHECK_SAFE 0
+CHECK 1
+FREE 1

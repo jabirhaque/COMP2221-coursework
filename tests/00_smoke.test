@@ -1,0 +1,7 @@
+# Basic allocation, patterned write, read and free.
+HEAP 4096
+MALLOC 0 128
+WRITE 0 0 32
+READ 0 0 32
+CHECK 0
+FREE 0

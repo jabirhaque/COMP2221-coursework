@@ -1,0 +1,13 @@
+# NULL, repeated and interior-pointer frees must be safe.
+HEAP 4096
+FREE_NULL
+MALLOC 0 160
+WRITE 0 0 80
+FREE_OFFSET 0 8
+CHECK 0
+FREE 0
+FREE_AGAIN 0
+MALLOC 1 160
+WRITE 1 0 80
+CHECK 1
+FREE 1

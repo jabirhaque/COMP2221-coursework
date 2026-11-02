@@ -1,0 +1,12 @@
+# Required boundary, zero-length and overflow behaviour.
+HEAP 4096
+EXPECT_NULL 0
+EXPECT_NULL_MAX
+MALLOC 0 100
+WRITE 0 0 20
+WRITE 0 100 0
+READ 0 100 0
+READ_FAIL 0 95 10
+WRITE_FAIL 0 95 10
+CHECK 0
+FREE 0

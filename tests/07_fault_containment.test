@@ -1,0 +1,15 @@
+# Payload corruption in one allocation should not damage unrelated payloads.
+HEAP 8192
+MALLOC 0 256
+MALLOC 1 256
+MALLOC 2 256
+WRITE 0 0 128
+WRITE 1 0 128
+WRITE 2 0 128
+FLIP_SLOT 1 50 0x20
+CHECK_SAFE 1
+CHECK 0
+CHECK 2
+TRY_MALLOC 3 128
+CHECK 0
+CHECK 2
