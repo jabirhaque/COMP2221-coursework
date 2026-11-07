@@ -22,8 +22,7 @@ typedef struct {
     uint8_t pattern[5];
 } AllocatorState;
 
-int mm_init(uint8_t *heap, size_t heap_size)
-{
+int mm_init(uint8_t *heap, size_t heap_size){
     heap_a = NULL;
     heap_size_a = 0;
 
@@ -65,4 +64,21 @@ int mm_init(uint8_t *heap, size_t heap_size)
     heap_size_a = heap_size;
 
     return 0;
+}
+
+void *mm_malloc(size_t size){
+    AllocatorState state = {0};
+    memcpy(&state, heap_a, sizeof(AllocatorState));
+
+    size_t current = state.head;
+    BlockHeader header = {0};
+    while(current < heap_size_a){
+        memcpy(&header, heap_a + current, sizeof(BlockHeader));
+        if (header.free && size <= header.size){
+            header.free = false;
+            return heap_a + current + sizeof(BlockHeader);
+        }
+
+        current = header.next;
+    }
 }
