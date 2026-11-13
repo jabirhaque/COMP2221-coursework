@@ -74,11 +74,46 @@ void *mm_malloc(size_t size){
     BlockHeader header = {0};
     while(current < heap_size_a){
         memcpy(&header, heap_a + current, sizeof(BlockHeader));
-        if (header.free && size <= header.size){
+        if (header.free && header.size >= size){
             header.free = false;
+            //split
+            if (header.size > size + sizeof(BlockHeader)){
+                size_t block_end = current + sizeof(BlockHeader) + size + sizeof(BlockHeader);
+
+                if (block_end > SIZE_MAX - (PAYLOAD_ALIGNMENT - 1)) return NULL;
+
+                size_t payload_offset = ((block_end + PAYLOAD_ALIGNMENT - 1) / PAYLOAD_ALIGNMENT) * PAYLOAD_ALIGNMENT;
+
+                if (payload_offset >= heap_size_a) return NULL;
+
+                size_t header_offset = payload_offset - sizeof(BlockHeader);
+
+                BlockHeader newHeader = {0};
+                newHeader.size = current + sizeof(BlockHeader) + header.size - header_offset;
+                newHeader.next = header.next;
+                newHeader.prev = current;
+                newHeader.free = true;
+
+                if (header.next != SIZE_MAX){
+                    BlockHeader nextHeader = {0};
+                    memcpy(&nextHeader, heap_a + header.next, sizeof(BlockHeader));
+
+                    nextHeader.prev = header_offset;
+
+                    memcpy(heap_a + header.next, &nextHeader, sizeof(BlockHeader));
+                }
+
+                header.next = header_offset;
+                header.size = header_offset - current - sizeof(BlockHeader);
+                memcpy(heap_a + current, &header, sizeof(BlockHeader));
+                memcpy(heap_a + header_offset, &newHeader, sizeof(BlockHeader));
+            }
+
             return heap_a + current + sizeof(BlockHeader);
         }
 
         current = header.next;
     }
+
+    return NULL;
 }
