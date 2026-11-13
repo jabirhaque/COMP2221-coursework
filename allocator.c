@@ -67,6 +67,8 @@ int mm_init(uint8_t *heap, size_t heap_size){
 }
 
 void *mm_malloc(size_t size){
+    if (size == 0 || size > heap_size_a || heap_a == NULL) return NULL;
+
     AllocatorState state = {0};
     memcpy(&state, heap_a, sizeof(AllocatorState));
 
