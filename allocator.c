@@ -105,9 +105,10 @@ void *mm_malloc(size_t size){
 
                 header.next = header_offset;
                 header.size = header_offset - current - sizeof(BlockHeader);
-                memcpy(heap_a + current, &header, sizeof(BlockHeader));
                 memcpy(heap_a + header_offset, &newHeader, sizeof(BlockHeader));
             }
+
+            memcpy(heap_a + current, &header, sizeof(BlockHeader));
 
             return heap_a + current + sizeof(BlockHeader);
         }
