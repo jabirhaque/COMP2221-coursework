@@ -89,7 +89,7 @@ void *mm_malloc(size_t size){
                 size_t header_offset = payload_offset - sizeof(BlockHeader);
 
                 BlockHeader newHeader = {0};
-                newHeader.size = current + sizeof(BlockHeader) + header.size - header_offset;
+                newHeader.size = current + header.size - header_offset;
                 newHeader.next = header.next;
                 newHeader.prev = current;
                 newHeader.free = true;
