@@ -120,3 +120,56 @@ void *mm_malloc(size_t size){
 
     return NULL;
 }
+
+void mm_free(void *ptr){
+    if (ptr == NULL || heap_a == NULL || ptr < heap_a || ptr >= heap_a + heap_size_a) return;
+    if ((size_t) ptr % PAYLOAD_ALIGNMENT != 0 || ptr < heap_a + sizeof(AllocatorState) + sizeof(BlockHeader)) return;
+
+    int8_t* headerPtr = (int8_t*) ptr - sizeof(BlockHeader);
+    BlockHeader header = {0};
+
+    memcpy(&header, headerPtr, sizeof(BlockHeader));
+    header.free = true;
+    
+    if (header.next != SIZE_MAX){
+        int8_t *nextPtr = heap_a + header.next;
+        BlockHeader next = {0};
+        memcpy(&next, nextPtr, sizeof(BlockHeader));
+
+        if (next.free){
+            header.size += sizeof(BlockHeader) + next.size;
+            header.next = next.next;
+
+            if (next.next != SIZE_MAX){
+                int8_t *nextNextPtr = heap_a + next.next;
+                BlockHeader nextNext = {0};
+                memcpy(&nextNext, nextNextPtr, sizeof(BlockHeader));
+                nextNext.prev = headerPtr - heap_a;
+                memcpy(nextNextPtr, &nextNext, sizeof(BlockHeader));
+            }
+        }
+    }
+
+    if (header.prev != SIZE_MAX){
+        int8_t *prevPtr = heap_a + header.prev;
+        BlockHeader prev = {0};
+        memcpy(&prev, prevPtr, sizeof(BlockHeader));
+
+        if (prev.free){
+            prev.size += sizeof(BlockHeader) + header.size;
+            prev.next = header.next;
+
+            if (header.next != SIZE_MAX){
+                int8_t *nextPtr = heap_a + header.next;
+                BlockHeader next = {0};
+                memcpy(&next, nextPtr, sizeof(BlockHeader));
+                next.prev = prevPtr - heap_a;
+                memcpy(nextPtr, &next, sizeof(BlockHeader));
+            }
+        }
+
+        memcpy(prevPtr, &prev, sizeof(BlockHeader));
+    }
+
+    memcpy(headerPtr, &header, sizeof(BlockHeader));
+}
