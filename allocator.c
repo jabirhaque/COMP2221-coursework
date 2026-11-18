@@ -129,6 +129,7 @@ void mm_free(void *ptr){
     BlockHeader header = {0};
 
     memcpy(&header, headerPtr, sizeof(BlockHeader));
+    if (header.free) return;
     header.free = true;
     
     if (header.next != SIZE_MAX){
