@@ -121,9 +121,44 @@ void *mm_malloc(size_t size){
     return NULL;
 }
 
+bool validate_pointer(void *ptr){
+    if (ptr == NULL || heap_a == NULL || ptr < heap_a + sizeof(AllocatorState) + sizeof(BlockHeader) || ptr >= heap_a + heap_size_a) return false;
+    if ((size_t) ptr % PAYLOAD_ALIGNMENT != 0) return false;
+    return true;
+}
+
+size_t mm_read(void *ptr, size_t offset, void *buf, size_t len){
+    if (!validate_pointer(ptr)) return -1;
+    int8_t *headerPtr = (int8_t*) ptr - sizeof(BlockHeader);
+    BlockHeader header = {0};
+    memcpy(&header, headerPtr, sizeof(BlockHeader));
+
+    if (header.free) return -1;
+
+    if (offset >= header.size || offset + len > header.size) return -1;
+
+    memcpy(buf, ptr + offset, len);
+
+    return len;
+}
+
+size_t mm_write(void *ptr, size_t offset, const void *src, size_t len){
+    if (!validate_pointer(ptr)) return -1;
+    int8_t *headerPtr = (int8_t*) ptr - sizeof(BlockHeader);
+    BlockHeader header = {0};
+    memcpy(&header, headerPtr, sizeof(BlockHeader));
+
+    if (header.free) return -1;
+
+    if (offset >= header.size || offset + len > header.size) return -1;
+
+    memcpy(ptr + offset, src, len);
+
+    return len;
+}
+
 void mm_free(void *ptr){
-    if (ptr == NULL || heap_a == NULL || ptr < heap_a || ptr >= heap_a + heap_size_a) return;
-    if ((size_t) ptr % PAYLOAD_ALIGNMENT != 0 || ptr < heap_a + sizeof(AllocatorState) + sizeof(BlockHeader)) return;
+    if (!validate_pointer(ptr)) return;
 
     int8_t* headerPtr = (int8_t*) ptr - sizeof(BlockHeader);
     BlockHeader header = {0};
