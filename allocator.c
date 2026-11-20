@@ -158,6 +158,7 @@ size_t mm_write(void *ptr, size_t offset, const void *src, size_t len){
 }
 
 void mm_free(void *ptr){
+
     if (!validate_pointer(ptr)) return;
 
     int8_t* headerPtr = (int8_t*) ptr - sizeof(BlockHeader);
@@ -186,6 +187,10 @@ void mm_free(void *ptr){
         }
     }
 
+    bool prevMerged = false;
+    size_t payloadSize;
+    int8_t *payloadAddress;
+
     if (header.prev != SIZE_MAX){
         int8_t *prevPtr = heap_a + header.prev;
         BlockHeader prev = {0};
@@ -202,10 +207,26 @@ void mm_free(void *ptr){
                 next.prev = prevPtr - heap_a;
                 memcpy(nextPtr, &next, sizeof(BlockHeader));
             }
+            prevMerged = true;
+            payloadSize = prev.size;
+            payloadAddress = prevPtr + sizeof(BlockHeader);
+            memcpy(prevPtr, &prev, sizeof(BlockHeader));
         }
-
-        memcpy(prevPtr, &prev, sizeof(BlockHeader));
     }
 
-    memcpy(headerPtr, &header, sizeof(BlockHeader));
+    if (!prevMerged){
+        payloadSize = header.size;
+        payloadAddress = headerPtr + sizeof(BlockHeader);
+        memcpy(headerPtr, &header, sizeof(BlockHeader));   
+    }
+
+    AllocatorState state = {0};
+    memcpy(&state, heap_a, sizeof(AllocatorState));
+
+    int8_t *payload = (int8_t*) payloadAddress;
+    size_t baseOffset = (size_t) (payloadAddress - heap_a);
+
+    for (size_t i = 0; i < payloadSize; i++){
+        payload[i] = state.pattern[(baseOffset + i) % 5];
+    }
 }
