@@ -123,7 +123,7 @@ void *mm_malloc(size_t size){
 
 bool validate_pointer(void *ptr){
     if (ptr == NULL || heap_a == NULL || ptr < heap_a + sizeof(AllocatorState) + sizeof(BlockHeader) || ptr >= heap_a + heap_size_a) return false;
-    if ((size_t) ptr % PAYLOAD_ALIGNMENT != 0) return false;
+    if (((size_t) ptr - (size_t) heap_a) % PAYLOAD_ALIGNMENT != 0) return false;
     return true;
 }
 
