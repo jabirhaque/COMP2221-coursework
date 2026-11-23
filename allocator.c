@@ -15,6 +15,7 @@ typedef struct {
     size_t prev;
     size_t next;
     bool free;
+    //todo: introduce a crc32 checksum
 } BlockHeader;
 
 typedef struct {
@@ -80,13 +81,13 @@ void *mm_malloc(size_t size){
             header.free = false;
             //split
             if (header.size > size + sizeof(BlockHeader)){
-                size_t block_end = current + sizeof(BlockHeader) + size + sizeof(BlockHeader);
+                size_t block_end = current + sizeof(BlockHeader) + size + sizeof(BlockHeader); //todo: overflow check
 
                 if (block_end > SIZE_MAX - (PAYLOAD_ALIGNMENT - 1)) return NULL;
 
                 size_t payload_offset = ((block_end + PAYLOAD_ALIGNMENT - 1) / PAYLOAD_ALIGNMENT) * PAYLOAD_ALIGNMENT;
 
-                if (payload_offset >= heap_size_a) return NULL;
+                if (payload_offset >= heap_size_a) return NULL; //todo: check for this instead of returning null
 
                 size_t header_offset = payload_offset - sizeof(BlockHeader);
 
@@ -137,7 +138,7 @@ size_t mm_read(void *ptr, size_t offset, void *buf, size_t len){
 
     if (offset >= header.size || offset + len > header.size) return 0;
 
-    memcpy(buf, ptr + offset, len);
+    memcpy(buf, (int8_t*)ptr + offset, len);
 
     return len;
 }
@@ -152,7 +153,7 @@ size_t mm_write(void *ptr, size_t offset, const void *src, size_t len){
 
     if (offset >= header.size || offset + len > header.size) return 0;
 
-    memcpy(ptr + offset, src, len);
+    memcpy((int8_t*)ptr + offset, src, len);
 
     return len;
 }
