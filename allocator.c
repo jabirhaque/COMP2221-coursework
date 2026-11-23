@@ -128,14 +128,14 @@ bool validate_pointer(void *ptr){
 }
 
 size_t mm_read(void *ptr, size_t offset, void *buf, size_t len){
-    if (!validate_pointer(ptr)) return -1;
+    if (!validate_pointer(ptr)) return 0;
     int8_t *headerPtr = (int8_t*) ptr - sizeof(BlockHeader);
     BlockHeader header = {0};
     memcpy(&header, headerPtr, sizeof(BlockHeader));
 
-    if (header.free) return -1;
+    if (header.free) return 0;
 
-    if (offset >= header.size || offset + len > header.size) return -1;
+    if (offset >= header.size || offset + len > header.size) return 0;
 
     memcpy(buf, ptr + offset, len);
 
@@ -143,14 +143,14 @@ size_t mm_read(void *ptr, size_t offset, void *buf, size_t len){
 }
 
 size_t mm_write(void *ptr, size_t offset, const void *src, size_t len){
-    if (!validate_pointer(ptr)) return -1;
+    if (!validate_pointer(ptr)) return 0;
     int8_t *headerPtr = (int8_t*) ptr - sizeof(BlockHeader);
     BlockHeader header = {0};
     memcpy(&header, headerPtr, sizeof(BlockHeader));
 
-    if (header.free) return -1;
+    if (header.free) return 0;
 
-    if (offset >= header.size || offset + len > header.size) return -1;
+    if (offset >= header.size || offset + len > header.size) return 0;
 
     memcpy(ptr + offset, src, len);
 
