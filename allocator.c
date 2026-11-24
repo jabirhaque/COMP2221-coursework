@@ -83,11 +83,17 @@ void *mm_malloc(size_t size){
             if (header.size > size + sizeof(BlockHeader)){
                 size_t block_end = current + sizeof(BlockHeader) + size + sizeof(BlockHeader); //todo: overflow check
 
-                if (block_end > SIZE_MAX - (PAYLOAD_ALIGNMENT - 1)) return NULL;
+                if (block_end > SIZE_MAX - (PAYLOAD_ALIGNMENT - 1)){
+                    memcpy(heap_a + current, &header, sizeof(BlockHeader));
+                    return heap_a + current + sizeof(BlockHeader);
+                }
 
                 size_t payload_offset = ((block_end + PAYLOAD_ALIGNMENT - 1) / PAYLOAD_ALIGNMENT) * PAYLOAD_ALIGNMENT;
 
-                if (payload_offset >= heap_size_a) return NULL; //todo: check for this instead of returning null
+                if (payload_offset >= heap_size_a || payload_offset >= current + sizeof(BlockHeader) + header.size){
+                    memcpy(heap_a + current, &header, sizeof(BlockHeader));
+                    return heap_a + current + sizeof(BlockHeader);
+                }
 
                 size_t header_offset = payload_offset - sizeof(BlockHeader);
 
