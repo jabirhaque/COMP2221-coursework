@@ -56,11 +56,13 @@ int mm_init(uint8_t *heap, size_t heap_size){
     head.prev = SIZE_MAX;
     head.next = SIZE_MAX;
     head.free = true;
+    head.crc32 = compute_header_crc(&head);
 
     AllocatorState state = {0};
 
     state.head = header_offset;
     memcpy(state.pattern, pattern, sizeof(pattern));
+    state.crc32 = compute_state_crc(&state);
 
     memcpy(heap, &state, sizeof(state));
     memcpy(heap + header_offset, &head, sizeof(head));
@@ -87,12 +89,14 @@ void *mm_malloc(size_t size){
             if (header.size > size + sizeof(BlockHeader)){
                 size_t overhead = 2 * sizeof(BlockHeader);
                 if (current > SIZE_MAX - overhead || size > SIZE_MAX - current - overhead) {
+                    header.crc32 = compute_header_crc(&header);
                     memcpy(heap_a + current, &header, sizeof(BlockHeader));
                     return heap_a + current + sizeof(BlockHeader);
                 }
                 size_t block_end = current + overhead + size;
 
                 if (block_end > SIZE_MAX - (PAYLOAD_ALIGNMENT - 1)){
+                    header.crc32 = compute_header_crc(&header);
                     memcpy(heap_a + current, &header, sizeof(BlockHeader));
                     return heap_a + current + sizeof(BlockHeader);
                 }
@@ -100,6 +104,7 @@ void *mm_malloc(size_t size){
                 size_t payload_offset = ((block_end + PAYLOAD_ALIGNMENT - 1) / PAYLOAD_ALIGNMENT) * PAYLOAD_ALIGNMENT;
 
                 if (payload_offset >= heap_size_a || payload_offset >= current + sizeof(BlockHeader) + header.size){
+                    header.crc32 = compute_header_crc(&header);
                     memcpy(heap_a + current, &header, sizeof(BlockHeader));
                     return heap_a + current + sizeof(BlockHeader);
                 }
@@ -111,12 +116,14 @@ void *mm_malloc(size_t size){
                 newHeader.next = header.next;
                 newHeader.prev = current;
                 newHeader.free = true;
+                newHeader.crc32 = compute_header_crc(&newHeader);
 
                 if (header.next != SIZE_MAX){
                     BlockHeader nextHeader = {0};
                     memcpy(&nextHeader, heap_a + header.next, sizeof(BlockHeader));
 
                     nextHeader.prev = header_offset;
+                    nextHeader.crc32 = compute_header_crc(&nextHeader);
 
                     memcpy(heap_a + header.next, &nextHeader, sizeof(BlockHeader));
                 }
@@ -125,7 +132,8 @@ void *mm_malloc(size_t size){
                 header.size = header_offset - current - sizeof(BlockHeader);
                 memcpy(heap_a + header_offset, &newHeader, sizeof(BlockHeader));
             }
-
+            
+            header.crc32 = compute_header_crc(&header);
             memcpy(heap_a + current, &header, sizeof(BlockHeader));
 
             return heap_a + current + sizeof(BlockHeader);
@@ -198,6 +206,7 @@ void mm_free(void *ptr){
                 BlockHeader nextNext = {0};
                 memcpy(&nextNext, nextNextPtr, sizeof(BlockHeader));
                 nextNext.prev = headerPtr - heap_a;
+                nextNext.crc32 = compute_header_crc(&nextNext);
                 memcpy(nextNextPtr, &nextNext, sizeof(BlockHeader));
             }
         }
@@ -221,11 +230,13 @@ void mm_free(void *ptr){
                 BlockHeader next = {0};
                 memcpy(&next, nextPtr, sizeof(BlockHeader));
                 next.prev = prevPtr - heap_a;
+                next.crc32 = compute_header_crc(&next);
                 memcpy(nextPtr, &next, sizeof(BlockHeader));
             }
             prevMerged = true;
             payloadSize = prev.size;
             payloadAddress = prevPtr + sizeof(BlockHeader);
+            prev.crc32 = compute_header_crc(&prev);
             memcpy(prevPtr, &prev, sizeof(BlockHeader));
         }
     }
@@ -233,6 +244,7 @@ void mm_free(void *ptr){
     if (!prevMerged){
         payloadSize = header.size;
         payloadAddress = headerPtr + sizeof(BlockHeader);
+        header.crc32 = compute_header_crc(&header);
         memcpy(headerPtr, &header, sizeof(BlockHeader));   
     }
 
