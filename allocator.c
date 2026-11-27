@@ -148,6 +148,12 @@ void *mm_malloc(size_t size){
 bool validate_pointer(void *ptr){
     if (ptr == NULL || heap_a == NULL || ptr < heap_a + sizeof(AllocatorState) + sizeof(BlockHeader) || ptr >= heap_a + heap_size_a) return false;
     if (((size_t) ptr - (size_t) heap_a) % PAYLOAD_ALIGNMENT != 0) return false;
+
+    int8_t *headerAddress = (int8_t*) ptr - sizeof(BlockHeader);
+    BlockHeader header = {0};
+    memcpy(&header, headerAddress, sizeof(BlockHeader));
+    if (header.crc32 != compute_header_crc(&header)) return false;
+
     return true;
 }
 
@@ -197,11 +203,11 @@ void mm_free(void *ptr){
         BlockHeader next = {0};
         memcpy(&next, nextPtr, sizeof(BlockHeader));
 
-        if (next.free){
+        if (validate_pointer(nextPtr + sizeof(BlockHeader)) && next.free){
             header.size += sizeof(BlockHeader) + next.size;
             header.next = next.next;
 
-            if (next.next != SIZE_MAX){
+            if (next.next != SIZE_MAX && validate_pointer(heap_a + next.next + sizeof(BlockHeader))){
                 int8_t *nextNextPtr = heap_a + next.next;
                 BlockHeader nextNext = {0};
                 memcpy(&nextNext, nextNextPtr, sizeof(BlockHeader));
@@ -221,11 +227,11 @@ void mm_free(void *ptr){
         BlockHeader prev = {0};
         memcpy(&prev, prevPtr, sizeof(BlockHeader));
 
-        if (prev.free){
+        if (validate_pointer(prevPtr + sizeof(BlockHeader)) && prev.free){
             prev.size += sizeof(BlockHeader) + header.size;
             prev.next = header.next;
 
-            if (header.next != SIZE_MAX){
+            if (header.next != SIZE_MAX && validate_pointer(heap_a + header.next + sizeof(BlockHeader))){
                 int8_t *nextPtr = heap_a + header.next;
                 BlockHeader next = {0};
                 memcpy(&next, nextPtr, sizeof(BlockHeader));
