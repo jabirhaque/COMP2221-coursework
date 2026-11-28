@@ -79,13 +79,16 @@ void *mm_malloc(size_t size){
     AllocatorState state = {0};
     memcpy(&state, heap_a, sizeof(AllocatorState));
 
+    if (state.crc32 != compute_state_crc(&state)) return NULL;
+
     size_t current = state.head;
     BlockHeader header = {0};
+
     while(current < heap_size_a){
         memcpy(&header, heap_a + current, sizeof(BlockHeader));
+        if (header.crc32 != compute_header_crc(&header)) return NULL;
         if (header.free && header.size >= size){
             header.free = false;
-            //split
             if (header.size > size + sizeof(BlockHeader)){
                 size_t overhead = 2 * sizeof(BlockHeader);
                 if (current > SIZE_MAX - overhead || size > SIZE_MAX - current - overhead) {
@@ -118,7 +121,7 @@ void *mm_malloc(size_t size){
                 newHeader.free = true;
                 newHeader.crc32 = compute_header_crc(&newHeader);
 
-                if (header.next != SIZE_MAX){
+                if (header.next != SIZE_MAX && validate_pointer(heap_a + header.next + sizeof(BlockHeader))){
                     BlockHeader nextHeader = {0};
                     memcpy(&nextHeader, heap_a + header.next, sizeof(BlockHeader));
 
@@ -191,6 +194,10 @@ void mm_free(void *ptr){
 
     if (!validate_pointer(ptr)) return;
 
+    AllocatorState state = {0};
+    memcpy(&state, heap_a, sizeof(AllocatorState));
+    if (state.crc32 != compute_state_crc(&state)) return;
+
     int8_t* headerPtr = (int8_t*) ptr - sizeof(BlockHeader);
     BlockHeader header = {0};
 
@@ -203,7 +210,7 @@ void mm_free(void *ptr){
         BlockHeader next = {0};
         memcpy(&next, nextPtr, sizeof(BlockHeader));
 
-        if (validate_pointer(nextPtr + sizeof(BlockHeader)) && next.free){
+        if (next.crc32 == compute_header_crc(&next) && next.free){
             header.size += sizeof(BlockHeader) + next.size;
             header.next = next.next;
 
@@ -227,7 +234,7 @@ void mm_free(void *ptr){
         BlockHeader prev = {0};
         memcpy(&prev, prevPtr, sizeof(BlockHeader));
 
-        if (validate_pointer(prevPtr + sizeof(BlockHeader)) && prev.free){
+        if (prev.crc32 == compute_header_crc(&prev) && prev.free){
             prev.size += sizeof(BlockHeader) + header.size;
             prev.next = header.next;
 
@@ -253,9 +260,6 @@ void mm_free(void *ptr){
         header.crc32 = compute_header_crc(&header);
         memcpy(headerPtr, &header, sizeof(BlockHeader));   
     }
-
-    AllocatorState state = {0};
-    memcpy(&state, heap_a, sizeof(AllocatorState));
 
     int8_t *payload = (int8_t*) payloadAddress;
     size_t baseOffset = (size_t) (payloadAddress - heap_a);
