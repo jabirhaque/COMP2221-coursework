@@ -27,6 +27,45 @@ typedef struct {
     uint32_t crc32;
 } AllocatorState;
 
+static void init_crc32_table(void) {
+    if (crc32_initialized) return;
+    for (uint32_t i = 0; i < 256; i++) {
+        uint32_t crc = i;
+        for (int bit = 0; bit < 8; bit++) {
+            if (crc & 1u) {
+                crc = (crc >> 1) ^ 0xEDB88320u;
+            } else {
+                crc >>= 1;
+            }
+        }
+        crc32_table[i] = crc;
+    }
+    crc32_initialized = true;
+}
+
+static uint32_t calc_crc32(const void *data, size_t len) {
+    init_crc32_table();
+    const uint8_t *bytes = (const uint8_t *)data;
+    uint32_t crc = 0xFFFFFFFFu;
+    for (size_t i = 0; i < len; i++) {
+        uint8_t idx = (uint8_t)((crc ^ bytes[i]) & 0xFFu);
+        crc = (crc >> 8) ^ crc32_table[idx];
+    }
+    return crc ^ 0xFFFFFFFFu;
+}
+
+static uint32_t compute_header_crc(const BlockHeader *hdr) {
+    BlockHeader copy = *hdr;
+    copy.crc32 = 0;
+    return calc_crc32(&copy, sizeof(copy));
+}
+
+static uint32_t compute_state_crc(const AllocatorState *state) {
+    AllocatorState copy = *state;
+    copy.crc32 = 0;
+    return calc_crc32(&copy, sizeof(copy));
+}
+
 int mm_init(uint8_t *heap, size_t heap_size){
     heap_a = NULL;
     heap_size_a = 0;
@@ -267,43 +306,4 @@ void mm_free(void *ptr){
     for (size_t i = 0; i < payloadSize; i++){
         payload[i] = state.pattern[(baseOffset + i) % 5];
     }
-}
-
-static void init_crc32_table(void) {
-    if (crc32_initialized) return;
-    for (uint32_t i = 0; i < 256; i++) {
-        uint32_t crc = i;
-        for (int bit = 0; bit < 8; bit++) {
-            if (crc & 1u) {
-                crc = (crc >> 1) ^ 0xEDB88320u;
-            } else {
-                crc >>= 1;
-            }
-        }
-        crc32_table[i] = crc;
-    }
-    crc32_initialized = true;
-}
-
-static uint32_t calc_crc32(const void *data, size_t len) {
-    init_crc32_table();
-    const uint8_t *bytes = (const uint8_t *)data;
-    uint32_t crc = 0xFFFFFFFFu;
-    for (size_t i = 0; i < len; i++) {
-        uint8_t idx = (uint8_t)((crc ^ bytes[i]) & 0xFFu);
-        crc = (crc >> 8) ^ crc32_table[idx];
-    }
-    return crc ^ 0xFFFFFFFFu;
-}
-
-static uint32_t compute_header_crc(const BlockHeader *hdr) {
-    BlockHeader copy = *hdr;
-    copy.crc32 = 0;
-    return calc_crc32(&copy, sizeof(copy));
-}
-
-static uint32_t compute_state_crc(const AllocatorState *state) {
-    AllocatorState copy = *state;
-    copy.crc32 = 0;
-    return calc_crc32(&copy, sizeof(copy));
 }
